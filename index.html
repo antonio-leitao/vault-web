@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rust WASM Vault</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 600px;
+        margin: 2em auto;
+        background: #f4f4f4;
+      }
+      textarea {
+        width: 100%;
+        min-height: 150px;
+        box-sizing: border-box;
+      }
+      input {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+        margin-bottom: 1em;
+      }
+      button {
+        padding: 10px 15px;
+        margin-right: 10px;
+        cursor: pointer;
+      }
+      pre {
+        background: #e3e3e3;
+        padding: 1em;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+      .error {
+        color: red;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Rust WASM Vault</h1>
+    <p>
+      Enter your master password and the data you want to encrypt or decrypt.
+    </p>
+
+    <label for="password">Master Password</label>
+    <input
+      type="password"
+      id="password"
+      placeholder="Your very strong password..."
+    />
+
+    <label for="data">Data (Plaintext or Encrypted JSON)</label>
+    <textarea
+      id="data"
+      placeholder='{"secret": "this is my data to encrypt"}'
+    ></textarea>
+
+    <button id="encryptBtn">Encrypt</button>
+    <button id="decryptBtn">Decrypt</button>
+
+    <h2>Result:</h2>
+    <pre id="output">Result will appear here...</pre>
+
+    <!-- The type="module" is CRITICAL -->
+    <script type="module" src="index.js"></script>
+  </body>
+</html>
