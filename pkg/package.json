@@ -1,0 +1,15 @@
+{
+  "name": "vault_crypto",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "vault_crypto_bg.wasm",
+    "vault_crypto.js",
+    "vault_crypto.d.ts"
+  ],
+  "main": "vault_crypto.js",
+  "types": "vault_crypto.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
