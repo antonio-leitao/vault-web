@@ -3,68 +3,242 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rust WASM Vault</title>
+    <title>Vault Crypto</title>
     <style>
       body {
-        font-family: sans-serif;
+        font-family: monospace;
         max-width: 600px;
-        margin: 2em auto;
-        background: #f4f4f4;
+        margin: 50px auto;
+        padding: 20px;
+        background: #f0f0f0;
       }
       textarea {
         width: 100%;
-        min-height: 150px;
-        box-sizing: border-box;
+        height: 150px;
+        margin: 10px 0;
+        font-family: monospace;
+        padding: 10px;
+        border: 1px solid #ccc;
       }
       input {
         width: 100%;
-        padding: 8px;
-        box-sizing: border-box;
-        margin-bottom: 1em;
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #ccc;
+        font-family: monospace;
       }
       button {
-        padding: 10px 15px;
-        margin-right: 10px;
+        background: #333;
+        color: white;
+        border: none;
+        padding: 10px 20px;
         cursor: pointer;
+        margin-right: 10px;
+        font-family: monospace;
       }
-      pre {
-        background: #e3e3e3;
-        padding: 1em;
-        white-space: pre-wrap;
-        word-wrap: break-word;
+      button:hover {
+        background: #555;
+      }
+      button:disabled {
+        background: #999;
+        cursor: not-allowed;
+      }
+      .section {
+        background: white;
+        padding: 20px;
+        margin: 20px 0;
+        border: 1px solid #ddd;
+      }
+      h2 {
+        margin-top: 0;
       }
       .error {
         color: red;
-        font-weight: bold;
+        margin: 10px 0;
+      }
+      .success {
+        color: green;
+        margin: 10px 0;
+      }
+      .loading {
+        color: #666;
+        font-style: italic;
+      }
+      #status {
+        min-height: 20px;
+        margin: 10px 0;
       }
     </style>
   </head>
   <body>
-    <h1>Rust WASM Vault</h1>
-    <p>
-      Enter your master password and the data you want to encrypt or decrypt.
+    <h1>Vault Crypto</h1>
+
+    <p style="color: #666; margin-bottom: 20px">
+      High-security encryption using Argon2id (256MB, 4 iterations) +
+      AES-256-GCM. Decryption takes 3-5 seconds to prevent brute force attacks.
     </p>
 
-    <label for="password">Master Password</label>
-    <input
-      type="password"
-      id="password"
-      placeholder="Your very strong password..."
-    />
+    <div class="section">
+      <h2>Encrypt</h2>
+      <textarea id="plaintext" placeholder='{"secret": "data"}'>
+{
+  "secret": "my-api-key",
+  "data": "sensitive info"
+}</textarea
+      >
+      <input type="password" id="encrypt-password" placeholder="Password" />
+      <button id="encrypt-btn">Encrypt</button>
+      <div id="encrypt-status"></div>
+      <textarea
+        id="encrypted"
+        readonly
+        placeholder="Encrypted data will appear here..."
+      ></textarea>
+    </div>
 
-    <label for="data">Data (Plaintext or Encrypted JSON)</label>
-    <textarea
-      id="data"
-      placeholder='{"secret": "this is my data to encrypt"}'
-    ></textarea>
+    <div class="section">
+      <h2>Decrypt</h2>
+      <textarea
+        id="encrypted-input"
+        placeholder="Paste encrypted JSON here..."
+      ></textarea>
+      <input type="password" id="decrypt-password" placeholder="Password" />
+      <button id="decrypt-btn">Decrypt</button>
+      <div id="decrypt-status"></div>
+      <textarea
+        id="decrypted"
+        readonly
+        placeholder="Decrypted data will appear here..."
+      ></textarea>
+    </div>
 
-    <button id="encryptBtn">Encrypt</button>
-    <button id="decryptBtn">Decrypt</button>
+    <script type="module">
+      import init, { WasmCrypto } from "./pkg/vault_crypto.js";
 
-    <h2>Result:</h2>
-    <pre id="output">Result will appear here...</pre>
+      let crypto = null;
+      let initialized = false;
 
-    <!-- The type="module" is CRITICAL -->
-    <script type="module" src="index.js"></script>
+      // Show status message
+      function showStatus(elementId, message, type = "") {
+        const el = document.getElementById(elementId);
+        el.className = type;
+        el.textContent = message;
+        if (type !== "loading") {
+          setTimeout(() => {
+            el.textContent = "";
+            el.className = "";
+          }, 5000);
+        }
+      }
+
+      // Initialize WASM
+      async function initWasm() {
+        try {
+          showStatus("encrypt-status", "Initializing WASM...", "loading");
+
+          // Initialize with explicit path to WASM file
+          await init("./pkg/vault_crypto_bg.wasm");
+
+          crypto = new WasmCrypto();
+          initialized = true;
+          showStatus("encrypt-status", "Ready!", "success");
+
+          // Enable buttons
+          document.getElementById("encrypt-btn").disabled = false;
+          document.getElementById("decrypt-btn").disabled = false;
+        } catch (error) {
+          console.error("Initialization error:", error);
+          showStatus(
+            "encrypt-status",
+            "Failed to initialize: " + error.message,
+            "error",
+          );
+        }
+      }
+
+      // Encrypt function
+      document
+        .getElementById("encrypt-btn")
+        .addEventListener("click", async () => {
+          if (!initialized) return;
+
+          try {
+            const plaintext = document.getElementById("plaintext").value;
+            const password = document.getElementById("encrypt-password").value;
+
+            if (!password) {
+              showStatus("encrypt-status", "Please enter a password", "error");
+              return;
+            }
+
+            // Validate JSON
+            JSON.parse(plaintext);
+
+            showStatus("encrypt-status", "Encrypting...", "loading");
+
+            // Add small delay to show loading
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            const encrypted = crypto.encrypt_json(plaintext, password);
+            document.getElementById("encrypted").value = encrypted;
+
+            showStatus("encrypt-status", "Encrypted successfully!", "success");
+
+            // Also copy to decrypt input for easy testing
+            document.getElementById("encrypted-input").value = encrypted;
+          } catch (error) {
+            showStatus(
+              "encrypt-status",
+              "Encryption failed: " + error.message,
+              "error",
+            );
+          }
+        });
+
+      // Decrypt function
+      document
+        .getElementById("decrypt-btn")
+        .addEventListener("click", async () => {
+          if (!initialized) return;
+
+          try {
+            const encryptedInput =
+              document.getElementById("encrypted-input").value;
+            const password = document.getElementById("decrypt-password").value;
+
+            if (!password) {
+              showStatus("decrypt-status", "Please enter a password", "error");
+              return;
+            }
+
+            showStatus(
+              "decrypt-status",
+              "Decrypting (this takes 3-5 seconds)...",
+              "loading",
+            );
+
+            // Add small delay to ensure UI updates
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            const decrypted = crypto.decrypt_json(encryptedInput, password);
+            document.getElementById("decrypted").value = decrypted;
+
+            showStatus("decrypt-status", "Decrypted successfully!", "success");
+          } catch (error) {
+            showStatus(
+              "decrypt-status",
+              "Decryption failed: " + error.message,
+              "error",
+            );
+          }
+        });
+
+      // Disable buttons until WASM is loaded
+      document.getElementById("encrypt-btn").disabled = true;
+      document.getElementById("decrypt-btn").disabled = true;
+
+      // Initialize on load
+      initWasm();
+    </script>
   </body>
 </html>
